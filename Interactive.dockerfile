@@ -9,14 +9,49 @@
 
 FROM spinalhdl:spinalhdl
 
-# Install GTKWave
-RUN sudo apt-get install -y gtkwave
+# Global arguments
+ARG USER=spinaldev
+ARG USERPWD=spinaldev 
+ARG WORKDIR=/home/spinaldev
+ARG ROOTPWD=spinaldev
+
+RUN apt-get update && apt-get install -y \
+  sudo \
+  adwaita-icon-theme-full \ 
+  emacs \
+  git \
+  x11-apps \
+  xfce4\
+  xrdp \ 
+  xfce4-terminal 
+
+####### Linux ##########################################
+
+# Change root password
+RUN echo "root:${ROOTPWD}" | chpasswd
+
+# Create the default user
+RUN useradd -m -s /bin/bash -d ${WORKDIR} ${USER}
+RUN echo "${USER}:${USERPWD}" | chpasswd
+RUN adduser ${USER} sudo
+
+# Customize terminal
+RUN echo 'RESET="\[$(tput sgr0)\]"' >> $WORKDIR/.bashrc
+RUN echo 'GREEN="\[$(tput setaf 2)\]"' >> $WORKDIR/.bashrc 
+RUN echo 'export PS1="${GREEN}\u:\W${RESET} $ "' >> $WORKDIR/.bashrc 
+
+# owner settings:
+#  - user root for all files in /opt
+#  - user spinaldev for all files in /home/spinaldev
+
+USER root
+
+###### tools #############################################
+RUN apt-get install -y gtkwave
 
 RUN mkdir -p $WORKDIR/projects/user
 
 ####### RICSV #############################################
-
-USER root
 
 # Make a working folder and set the necessary environment variables.
 ENV RISCV /opt/riscv
@@ -44,3 +79,5 @@ WORKDIR $RISCV/test
 RUN echo '#include <stdio.h>\n int main(void) { printf("Hello \
   world!\\n"); return 0; }' > hello.c 
 RUN riscv64-unknown-elf-gcc -o hello hello.c
+
+USER $USER
